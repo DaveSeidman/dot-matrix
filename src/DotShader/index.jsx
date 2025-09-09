@@ -1,38 +1,41 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import { BufferAttribute, Color, MathUtils } from "three";
-import vertexShader from "./shaders/shader.vert?raw";
-import fragmentShader from "./shaders/shader.frag?raw";
+import vertexShader from "./shader.vert?raw";
+import fragmentShader from "./shader.frag?raw";
 
-export default function Shader({ videoTex, videoSize, controls }) {
-  const { gl } = useThree();
-  const {
-    cols, rows, samplePx, gamma, dotMin, dotMax, easingFactor, colorA, colorB,
-  } = controls;
-
+export default function DotShader({ videoTex, videoSize, size, samplePx, gamma, dotMin, dotMax, easingFactor, color }) {
   const geomRef = useRef(null);
   const matRef = useRef(null);
 
   const [positions, setPositions] = useState(new Float32Array());
   const [uvs, setUvs] = useState(new Float32Array());
 
-  // geometry rebuild on rows/cols
+  const { size: viewportSize } = useThree();
+
   useEffect(() => {
+    const aspect = viewportSize.width / viewportSize.height; // >1 = wide, <1 = tall
     const pts = [];
     const uv = [];
-    for (let r = 0; r < rows; r++) {
-      for (let c = 0; c < cols; c++) {
-        const u = (c + 0.5) / cols;
-        const v = (r + 0.5) / rows;
-        const x = u * 2 - 1;
+
+    for (let r = 0; r < size; r++) {
+      for (let c = 0; c < size; c++) {
+        const u = (c + 0.5) / size;
+        const v = (r + 0.5) / size;
+
+        // map to NDC (-1..1), correct for aspect ratio
+        const x = (u * 2 - 1) * aspect;
         const y = -(v * 2 - 1);
+
         pts.push(x, y, 0);
         uv.push(u, v);
       }
     }
+
     setPositions(new Float32Array(pts));
     setUvs(new Float32Array(uv));
-  }, [rows, cols]);
+  }, [size, viewportSize]);
+
 
   useEffect(() => {
     if (!geomRef.current) return;
@@ -40,22 +43,6 @@ export default function Shader({ videoTex, videoSize, controls }) {
     geomRef.current.setAttribute("aUv", new BufferAttribute(uvs, 2));
   }, [positions, uvs]);
 
-  // push slider-driven uniforms on change (so they don't get stuck in a stale frame closure)
-  useEffect(() => {
-    if (!matRef.current) return;
-    const u = matRef.current.uniforms;
-    u.uSamplePx.value = samplePx;
-    u.uGamma.value = gamma;
-    u.uDotMin.value = dotMin;
-    u.uDotMax.value = dotMax;
-  }, [samplePx, gamma, dotMin, dotMax]);
-
-  // useEffect(() => {
-  //   if (!matRef.current) return;
-  //   const u = matRef.current.uniforms;
-  //   u.uColorA.value.set(colorA);
-  //   u.uColorB.value.set(colorB);
-  // }, [colorA, colorB]);
 
   useEffect(() => {
     if (!matRef.current) return;
@@ -75,13 +62,16 @@ export default function Shader({ videoTex, videoSize, controls }) {
 
   useFrame((_, dt) => {
     if (!matRef.current) return;
-    if (videoTex) videoTex.needsUpdate = true;
+    if (videoTex) {
+      videoTex.needsUpdate = true;
+      // console.log(videoSize)
+    }
     const u = matRef.current.uniforms;
     u.uTex.value = videoTex;
     u.uEase.value = MathUtils.clamp(easeRef.current * (dt * 60.0), 0.0, 1.0);
   });
 
-  const key = [samplePx, gamma, dotMin, dotMax, easingFactor, colorA, colorB].join('-')
+  const key = [samplePx, gamma, dotMin, dotMax, easingFactor, color].join('-')
 
   return (
     <points>
@@ -101,8 +91,8 @@ export default function Shader({ videoTex, videoSize, controls }) {
           uDotMin: { value: dotMin },
           uDotMax: { value: dotMax },
           uEase: { value: easingFactor },
-          uColorA: { value: new Color(colorA) },
-          uColorB: { value: new Color(colorB) },
+          uColorA: { value: new Color('rgb(100, 100, 100)') },
+          uColorB: { value: new Color(color) },
           uSizeCap: { value: 64 }, // default; overwritten by effect above
         }}
       />

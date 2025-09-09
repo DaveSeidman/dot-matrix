@@ -7,5 +7,24 @@ html, body, #root, .app {
 }
 
 .app {
+  background: gray;
 
+  .hidden {
+    visibility: hidden;
+    opacity: 0;
+    height: 0;
+  }
+
+  .webcam {
+    position: absolute;
+
+    width: 100vw;
+    height: 100vh;
+  }
+
+  // canvas {
+  //   outline: 3px solid red;
+  //   position: absolute;
+  //   inset: 0;
+  // }
 }

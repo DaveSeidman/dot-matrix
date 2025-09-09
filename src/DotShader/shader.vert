@@ -25,7 +25,7 @@ float sampleLuma(vec2 baseUv) {
 }
 
 void main() {
-  float L = sampleLuma(aUv);
+  float L = sampleLuma(vec2(aUv.x, 1.0 - aUv.y));
   L = pow(L, 1.0 / max(0.0001, uGamma));
   vLuma = clamp(L, 0.0, 1.0);
 

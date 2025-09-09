@@ -1,8 +1,8 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Canvas } from "@react-three/fiber";
-import { useControls, folder } from "leva";
+import { useControls } from "leva";
 import { VideoTexture, LinearFilter, RGBAFormat, Vector2 } from "three";
-import Shader from "./Shader";
+import DotShader from "./DotShader";
 import "./index.scss";
 
 const FULLSCREEN_ERRS_TO_IGNORE = new Set([
@@ -15,17 +15,19 @@ export default function App() {
   const [videoTex, setVideoTex] = useState(null);
   const [videoSize, setVideoSize] = useState({ w: 0, h: 0 });
 
-  const controls = useControls("Dots", {
-    cols: { value: 48, min: 4, max: 256, step: 1 },
-    rows: { value: 36, min: 4, max: 256, step: 1 },
+  const {
+    view, size, connectors, samplePx, gamma, dotMin, dotMax, easingFactor, color
+  } = useControls({
+    view: { value: 'dots', options: ['dots', 'camera'] },
+    size: { value: 48, min: 4, max: 256, step: 1 },
+    connectors: { value: 'none', options: ['none', 'horizontal', 'vertical', 'diagonal1', 'diagonal2'] },
     samplePx: { value: 6, min: 1, max: 20, step: 1 },
     gamma: { value: 1.1, min: 0.5, max: 3, step: 0.05 },
     dotMin: { value: 1, min: 0.5, max: 8, step: 0.5 },
     dotMax: { value: 18, min: 2, max: 64, step: 1 },
     easingFactor: { value: 0.25, min: 0.01, max: 1, step: 0.01 },
-    Colors: folder({ colorA: "#ffffff", colorB: "#00d8ff" }),
-  });
-
+    color: "#00d8ff"
+  })
   const start = async () => {
     const stream = await navigator.mediaDevices.getUserMedia({
       video: { facingMode: "user" },
@@ -90,20 +92,27 @@ export default function App() {
         muted
         playsInline
         autoPlay
-        style={{ position: "fixed", left: -9999, top: -9999, width: 1, height: 1 }}
+        className={`webcam ${view === 'camera' ? '' : 'hidden'}`}
       />
 
       <Canvas
         orthographic
         camera={{ position: [0, 0, 10], zoom: 300 }}
         gl={{ antialias: true, alpha: true, preserveDrawingBuffer: false }}
-        style={{ width: "100vw", height: "100vh" }}
+        style={{ position: 'fixed', inset: 0, width: "100vw", height: "100vh" }}
       >
         {videoTex && (
-          <Shader
+          <DotShader
             videoTex={videoTex}
             videoSize={new Vector2(videoSize.w || 1, videoSize.h || 1)}
-            controls={controls}
+            size={size}
+            connectors={connectors}
+            samplePx={samplePx}
+            gamma={gamma}
+            dotMin={dotMin}
+            dotMax={dotMax}
+            easingFactor={easingFactor}
+            color={color}
           />
         )}
       </Canvas>
